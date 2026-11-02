@@ -1,6 +1,7 @@
 """Poll Python source files and synchronize generated documentation."""
 
 import argparse
+import hashlib
 import logging
 from pathlib import Path
 from threading import Event
@@ -11,7 +12,7 @@ from src.notifier import MockNotifier
 
 logger = logging.getLogger(__name__)
 
-FileState = Tuple[int, int]
+FileState = bytes
 
 
 class DocumentationSyncService:
@@ -44,10 +45,10 @@ class DocumentationSyncService:
 			if any(part.startswith(".") or part in {"venv", "__pycache__", "node_modules"} for part in relative_parts):
 				continue
 			try:
-				stat = path.stat()
+				content = path.read_bytes()
 			except FileNotFoundError:
 				continue
-			snapshot[path] = (stat.st_mtime_ns, stat.st_size)
+			snapshot[path] = hashlib.blake2b(content, digest_size=16).digest()
 		return snapshot
 
 	def run_once(self) -> bool:
